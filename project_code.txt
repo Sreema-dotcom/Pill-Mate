@@ -1,0 +1,58 @@
+#include <Wire.h>
+#include <RTClib.h>
+#include <Servo.h>
+
+RTC_DS3231 rtc;
+Servo pillServo;
+
+const int buzzerPin = 8;
+const int servoPin = 9;
+
+// Define pill times and angles
+int pillHours[] = {0, 0, 0};      // Set hours here
+int pillMinutes[] = {2, 4, 6};    // Set minutes here
+int servoAngles[] = {30, 60, 90};    // Set angles for each time
+bool hasDispensed[3] = {false, false, false};
+
+void setup() {
+  Serial.begin(9600);
+  if (!rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
+
+  // Uncomment this line to set current time ONCE
+  //rtc.adjust(DateTime(2025, 5, 13, 20, 45, 0)); // year, month, day, hour, min, sec
+
+  pillServo.attach(servoPin);
+  pinMode(buzzerPin, OUTPUT);
+}
+
+void loop() {
+  DateTime now = rtc.now();
+
+  for (int i = 0; i < 3; i++) {
+    if (now.hour() == pillHours[i] && now.minute() == pillMinutes[i] && !hasDispensed[i]) {
+      // Buzzer on for 3 seconds
+      digitalWrite(buzzerPin, HIGH);
+      delay(3000);
+      digitalWrite(buzzerPin, LOW);
+
+      // Move servo to pill angle
+      pillServo.write(servoAngles[i]);
+      delay(20000); // Wait for 20 seconds
+
+      // Return servo to 0°
+      pillServo.write(0);
+
+      hasDispensed[i] = true;
+    }
+
+    // Reset for next day
+    if (now.minute() != pillMinutes[i]) {
+      hasDispensed[i] = false;
+    }
+  }
+
+  delay(1000); // Check every second
+}
